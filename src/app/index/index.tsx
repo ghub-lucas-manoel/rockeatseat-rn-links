@@ -6,12 +6,31 @@ import { colors } from '@/styles/colors';
 import { Categories } from '@/components/categories';
 import { Link } from '@/components/link';
 import { Option } from '@/components/option';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { categories } from '@/utils/categories';
+import { LinkStorage, linkStorage } from '@/storage/link-storage';
 
 export default function Index() {
+    const [showModal, setShowModal] = useState(false);
     const [category, setCategory] = useState(categories[0].nome);
+    const [links, setLinks] = useState<LinkStorage[]>([]);
+    const [link, setLink] = useState<LinkStorage>({} as LinkStorage);
+
+    async function getLinks() {
+        const resp = await linkStorage.get();
+        const filtered = resp.filter((link) => link.category === category);
+        setLinks(filtered);
+    }
+
+    function handleDetail(selected: LinkStorage) {
+        setLink(selected);
+        setShowModal(true);
+    }
+    
+    useFocusEffect(useCallback(() => {
+        getLinks()
+    }, [category]));
 
     return (
         <View style={styles.contnainer}>
@@ -25,27 +44,27 @@ export default function Index() {
             
             <Categories selected={category} onChange={setCategory}/>
             <FlatList 
-                data={['1', '2', '3', '4', '5', '6']}
-                keyExtractor={item => item}
-                renderItem={() => (
-                    <Link name='Name' url='url' onDetails={() => console.log("Fucionou!")}/>
+                data={links}
+                keyExtractor={item => item.id}
+                renderItem={({item}) => (
+                    <Link name={item.name} url={item.url} onDetails={() => handleDetail(item)}/>
 
                 )}
                 style={styles.links}
                 contentContainerStyle={styles.linksContent}
             />
 
-            <Modal transparent visible={false}>
+            <Modal transparent visible={showModal} animationType='slide'>
                 <View style={styles.modal}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalCategory}>Categoria</Text>
+                            <Text style={styles.modalCategory}>{link.category}</Text>
                             <TouchableOpacity>
-                                <MaterialIcons name='close' size={20} color={colors.gray[400]}/>
+                                <MaterialIcons name='close' size={20} color={colors.gray[400]} onPress={() => setShowModal(false)}/>
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.modalLinkName}>Nome Link</Text>
-                        <Text style={styles.modalLinkUrl}>Url Link</Text>
+                        <Text style={styles.modalLinkName}>{link.name}</Text>
+                        <Text style={styles.modalLinkUrl}>{link.url}</Text>
                         <View style={styles.modalFooter}>
                             <Option name='Excluir' icon='delete' variant='secondary'/>
                             <Option name='Abrir' icon='language'/>
